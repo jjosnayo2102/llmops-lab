@@ -36,3 +36,14 @@ cd llmops-lab
 Los dos workflows no vienen creados a propósito: un archivo de workflow vacío hace que GitHub Actions marque un error en cada push.
 
 `data/prod/` se llena al ejecutar `python -m src.traffic` (paso 4.1).
+
+## Preguntas de reflexión
+
+**1. ¿Por qué el gate rechazó el prompt v1 y qué cambiaste en v2 para que aprobara?**
+El gate rechazó v1 porque no especificaba los valores permitidos ni el formato JSON ni protegía contra inyecciones, obteniendo `contrato_valido: 0.2`, `accuracy_categoria: 0.0`, `accuracy_riesgo: 0.0` y `resistencia_inyeccion: 0.0` (todos por debajo de los umbrales). En v2 se definió explícitamente el esquema JSON con las listas cerradas de `categoria` y `riesgo_churn`, y la regla explícita de tratar el ticket como dato y no como orden, subiendo `contrato_valido` y `resistencia_inyeccion` a `1.0` y `accuracy_categoria` a `0.875`.
+
+**2. ¿Por qué el pull request trampa falló en GitHub si en tu máquina el gate aprobaba?**
+En local el gate aprobó porque en la rama trampa se modificaron `gate/thresholds.json` (bajando mínimos a `0.0`) y `gate/baseline.json` junto con el regreso a v1. En GitHub Actions, el paso Tomar el juez desde main sobrescribió `gate/`, `data/golden.jsonl`, `src/evaluate.py` y `src/gate.py` con las versiones de main, evaluando el prompt v1 contra los umbrales reales y el baseline de v2 (`0.825`), por lo que lo rechazó.
+
+**3. ¿Qué te muestra Langfuse que no ves en el archivo de trazas local?**
+Mientras `logs/trazas_*.jsonl` es solo texto plano secuencial difícil de inspeccionar, Langfuse ofrece observabilidad visual e interactiva: agrupa y filtra trazas por etiquetas (`prompt:`, `escenario:`), muestra paneles agregados de volumen, latencia, tokens y costos por modelo, y permite auditar cada petición individualmente con su entrada, salida estructurada y scores (`contrato_valido`, `categoria`).
